@@ -92,8 +92,12 @@ void doexec(void) {
 				 * XXX FILLMEIN(B): Replace the 
 				 * new command's stdin.
 				 */
+				close(STDIN_FILENO);
+				dup2(pipefds[0], STDIN_FILENO);
+				close(pipefds[0]);
+				close(pipefds[1]);
 
-				/* 
+				/*
 				 * The child must keep parsing the
 				 * line to extract the next command
 				 * in the pipeline.
@@ -105,6 +109,10 @@ void doexec(void) {
 				 * XXX FILLMEIN(B): Replace the 
 				 * new command's stdout.
 				 */
+				close(STDOUT_FILENO);
+				dup2(pipefds[1], STDOUT_FILENO);
+				close(pipefds[0]);
+				close(pipefds[1]);
 
 				/* 
 				 * The parent only needs to execute
@@ -115,14 +123,7 @@ void doexec(void) {
 		}
 	}
 
-	/*
-         * XXX FILLMEIN(A): Execute the new function. Do
-         * not forget to pass the argument vector to it.
-         *
-         * HINT: The command line arguments passed by
-         * the user are found in char **av.
-         */
-
+	execvp(av[0], av);
 	perror(av[0]);
 	exit(1);
 }
@@ -148,13 +149,17 @@ int main(void)
 		if (!av[0])
 			continue;
 
-		/*
-                 * XXX FILLMEIN(A): Create a child process using fork().
-                 * The parent should waits for the child, with waitpid(),
-                 * while the child should call doexec(). The child never
-                 * returns from doexec(), so you don't need to worry about
-                 * handling errors.
-                 */
-
+		switch (pid = fork())
+		{
+		case -1:
+			perror("fork failed");
+			break;
+		case 0:
+			doexec();
+			break;
+		default:
+			waitpid(pid, NULL, 0);
+			break;
+		}
 	}
 }
